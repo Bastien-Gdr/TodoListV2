@@ -3,7 +3,7 @@
     <q-page-container>
       <q-page class="bg-grey-3 column" padding>
         <div class="row q-pa-sm bg-primary">
-          <q-input v-model="newTodo" @keyup.enter="addTodo" class="col" square filled bg-color="white"
+          <q-input v-model="newTodo" :key="newTodo.id" @keyup.enter="addTodo" class="col" square filled bg-color="white"
             placeholder="Ajouter une tâche" dense>
             <template v-slot:append>
               <q-btn @click="addTodo" round dense flat icon="add" />
@@ -11,10 +11,10 @@
           </q-input>
         </div>
         <h5>À faire</h5>
-        <div>({{ checkedTodoCount }} / {{ todos.length }})</div>
+        <div>({{ checkedCount }} / {{ todos.length }})</div>
 
         <q-list class="bg-white" separator bordered>
-          <q-item v-for="todo in todos" :key="todo.title" @click="todo.completed = !todo.completed"
+          <q-item v-for="todo in todos" :key="todo.id"  @click="updateCompleted(todo)"
             :class="{ 'completed bg-grey-1': todo.completed }" clickable v-ripple>
             <q-item-section avatar>
               <q-checkbox v-model="todo.completed" class="no-pointer-events" color="primary" />
@@ -50,8 +50,7 @@ export default {
   data () {
     return {
       todos: [],
-      newTodo: '',
-      checkedTodoCount: 0
+      newTodo: ''
     }
   },
 
@@ -74,10 +73,7 @@ export default {
     async addTodo () {
       try {
         const response = await axios.post('http://localhost:3000/todos', {
-          title: this.newTodo,
-          description: '',
-          dueDate: ''
-
+          title: this.newTodo
           // Autres propriétés de la tâche...
         })
         console.log(response.data) // Réponse du serveur en cas de succès
@@ -85,7 +81,8 @@ export default {
         console.error(error) // Gestion des erreurs
       }
       this.todos.push({
-        title: this.newTodo
+        title: this.newTodo,
+        completed: false
       })
     },
 
@@ -98,31 +95,25 @@ export default {
           // Gestion des erreurs lors de la suppression
           console.error(error)
         })
-    }
+    },
 
-  },
+    async updateCompleted (todo) {
+      // Inverser la valeur de la propriété completed
+      todo.completed = !todo.completed
 
-  async updateTodo (todoId, updatedTodo) {
-    try {
-      // Effectuez une requête PUT ou PATCH vers votre API pour mettre à jour la tâche
-      await axios.put(`http://localhost:3000/todos/update/${todoId}`, updatedTodo)
-      // Mettez à jour localement le tableau de tâches avec les nouvelles données de la tâche modifiée
-      const todosIndex = this.todos.findIndex(todo => todo.id === todoId)
-      if (todosIndex !== -1) {
-        this.todos.splice(todosIndex, 1, updatedTodo)
+      try {
+        // Envoyer une requête à votre serveur backend pour mettre à jour la tâche
+        await axios.put(`http://localhost:3000/todos/update/${todo.id}`, { title: todo.title, completed: todo.completed })
+      } catch (error) {
+        console.error(error)
       }
-    } catch (error) {
-      // Gérez les erreurs lors de la modification de la tâche
-      console.error(error)
     }
   },
 
-  toggleTodo (todo) {
-    todo.checked = !todo.checked
-    this.updateCheckedTodoCount()
-  },
-  updateCheckedTodoCount () {
-    this.checkedTodoCount = this.todos.filter(todo => todo.checked).length
+  computed: {
+    checkedCount () {
+      return this.todos.filter(todo => todo.completed).length
+    }
   }
 
 }
